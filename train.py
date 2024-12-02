@@ -215,6 +215,7 @@ def main(runner_cfg_path=None):
     data_dict = defaultdict(list)
     N = 2 * opt.training.batch_size if cl_args.fast_test else min(len(test_dataset), len(val_dataset), 1000)
     test_tq = tqdm.tqdm(total=n_test_batch, desc='real_data', position=5)
+
     for i in range(0, N, opt.training.batch_size):
         data = next(test_dl_iter)
         data = fetch_reals(data, lidar_ref, device, opt.model.norm_label)
@@ -224,51 +225,41 @@ def main(runner_cfg_path=None):
     epoch_tq = tqdm.tqdm(total=opt.training.n_epochs, desc='Epoch', position=1)
     start_from_epoch = model.schedulers[0].last_epoch if opt.training.continue_train else 0 
         
-    #### Train & Validation Loop
+    #### Train & V
+    # alidation Loop
     for epoch in range(start_from_epoch, opt.training.n_epochs):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
-        iter_data_time = time.time()    # timer for data loading per iteration
         e_steps = 0                  # the number of training iterations in current epoch, reset to 0 every epoch
         # Train loop
-        if opt.training.isTrain:
-            model.train(True)
-            train_dl_iter = iter(train_dl)
-            n_train_batch = 2 if cl_args.fast_test else len(train_dl)
-            train_tq = tqdm.tqdm(total=n_train_batch, desc='Iter', position=3)
-            for i in range(n_train_batch):  # inner loop within one epoch
-                data = next(train_dl_iter)
-                # import matplotlib.pyplot as plt
-                # plt.figure(0)
-                # plt.imshow(np.clip(data['depth'][0,0].numpy()* 5, 0, 1))
-                # plt.figure(1)
-                # plt.imshow(np.clip(data['reflectance'][0,0].numpy(),0 ,1))
-                # plt.figure(2)
-                # plt.imshow(data['label'][0,0].numpy())
-                # plt.show()
-                iter_start_time = time.time()  # timer for computation per iteration
-                g_steps += 1
-                e_steps += 1
-                # if epoch == start_from_epoch and i == 0:
-                #     model.data_dependent_initialize(data)
-                model.set_input(data)         # unpack data from dataset and apply preprocessing
-                model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
-                if g_steps % opt.training.display_freq == 0:   # display images on visdom and save images to a HTML file
-                    current_visuals = model.get_current_visuals()
-                    if is_two_dataset:
-                        visualizer.display_current_results('train',current_visuals, g_steps,ds_cfg, opt.dataset.dataset_A.name, lidar_A, ds_cfg_B,\
-                             opt.dataset.dataset_B.name,lidar_B)
-                    else:
-                        visualizer.display_current_results('train',current_visuals, g_steps,ds_cfg, opt.dataset.dataset_A.name, lidar_A)
+        model.train(True)
+        train_dl_iter = iter(train_dl)
+        n_train_batch = 2 if cl_args.fast_test else len(train_dl)
+        train_tq = tqdm.tqdm(total=n_train_batch, desc='Iter', position=3)
+        for i in range(n_train_batch):  # inner loop within one epoch
+            data = next(train_dl_iter)
 
-                if g_steps % opt.training.print_freq == 0:    # print training losses and save logging information to the disk
-                    losses = model.get_current_losses()
-                    visualizer.print_current_losses('train', epoch, e_steps, losses, train_tq)
-                    visualizer.plot_current_losses('train', epoch, losses, g_steps)
+            g_steps += 1
+            e_steps += 1
 
-                if g_steps % opt.training.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
-                    train_tq.write('saving the latest model (epoch %d, total_iters %d)' % (epoch, g_steps))
-                    model.save_networks('latest')
-                train_tq.update(1)
+            model.set_input(data)         # unpack data from dataset and apply preprocessing
+            model.optimize_parameters()   # calculate loss functions, get gradients, update network weights
+            if g_steps % opt.training.display_freq == 0:   # display images on visdom and save images to a HTML file
+                current_visuals = model.get_current_visuals()
+                if is_two_dataset:
+                    visualizer.display_current_results('train',current_visuals, g_steps,ds_cfg, opt.dataset.dataset_A.name, lidar_A, ds_cfg_B,\
+                            opt.dataset.dataset_B.name,lidar_B)
+                else:
+                    visualizer.display_current_results('train',current_visuals, g_steps,ds_cfg, opt.dataset.dataset_A.name, lidar_A)
+
+            if g_steps % opt.training.print_freq == 0:    # print training losses and save logging information to the disk
+                losses = model.get_current_losses()
+                visualizer.print_current_losses('train', epoch, e_steps, losses, train_tq)
+                visualizer.plot_current_losses('train', epoch, losses, g_steps)
+
+            if g_steps % opt.training.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
+                train_tq.write('saving the latest model (epoch %d, total_iters %d)' % (epoch, g_steps))
+                model.save_networks('latest')
+            train_tq.update(1)
         val_dl_iter = iter(val_dl)
         n_val_batch = 2 if cl_args.fast_test else  len(val_dl)
         ##### validation

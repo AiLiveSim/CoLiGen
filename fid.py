@@ -29,7 +29,7 @@ class FID():
     #   self.post = KNN(self.ARCH["post"]["KNN"]["params"],
     #                    self.n_classes)
 
-    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    self.device =  "cuda"
 
     if os.path.isfile(stat_dir):
         stat = pickle.load(open(stat_dir, 'rb'))

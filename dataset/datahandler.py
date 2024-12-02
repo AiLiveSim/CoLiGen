@@ -100,6 +100,7 @@ def get_data_loader(cfg, split, batch_size, dataset_name='', shuffle=True, two_d
     dataset_B = get_dataset(cfg.dataset.dataset_B.name, cfg_B, ds_cfg_B, cfg_B.data_dir, split, limited_view, is_ref_semposs, norm_label)
     dataset = BinaryScan(dataset_A, dataset_B)
   loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=4, drop_last=True if split == 'train' else False)
+  
   return loader, dataset
 
 

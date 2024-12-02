@@ -282,10 +282,10 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[], initialize_wei
 
     Return an initialized network.
     """
-    if len(gpu_ids) > 0:
+    """    if len(gpu_ids) > 0:
         assert(torch.cuda.is_available())
         net.to(gpu_ids[0])
-        net = torch.nn.DataParallel(net, gpu_ids)  # multi-GPUs
+        net = torch.nn.DataParallel(net, gpu_ids)  # multi-GPUs"""
     if initialize_weights:
         init_weights(net, init_type, init_gain=init_gain)
     return net
@@ -652,7 +652,7 @@ class G_Resnet(nn.Module):
 
 
 
-def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], out_ch=None, same_kernel_size=True, no_antialias=False, no_antialias_up=False, opt=None, encode_layer=None, have_cond_mod=False):
+def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], out_ch=None, same_kernel_size=True, no_antialias=False, no_antialias_up=False, opt=None, encode_layer=None, have_cond_mod=False,device="cpu"):
     """Create a generator
 
     Parameters:
@@ -683,43 +683,43 @@ def define_G(input_nc, output_nc, ngf, netG, norm='batch', use_dropout=False, in
     norm_layer = get_norm_layer(norm_type=norm)
 
     if netG == 'resnet_9blocks':
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, out_ch=out_ch, no_antialias=no_antialias, no_antialias_up=no_antialias_up, encode_layer=encode_layer, have_cond_modality=have_cond_mod)
+        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=9, out_ch=out_ch, no_antialias=no_antialias, no_antialias_up=no_antialias_up, encode_layer=encode_layer, have_cond_modality=have_cond_mod).to(device)
     elif netG == 'resnet_6blocks':
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, out_ch=out_ch, no_antialias=no_antialias, no_antialias_up=no_antialias_up, encode_layer=encode_layer, have_cond_modality=have_cond_mod)
+        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6, out_ch=out_ch, no_antialias=no_antialias, no_antialias_up=no_antialias_up, encode_layer=encode_layer, have_cond_modality=have_cond_mod).to(device)
     elif netG == 'unet_64':
-        net = UnetGenerator_2(input_nc, output_nc, 6, ngf, norm_layer=norm_layer, use_dropout=use_dropout, same_kernel_size=False, out_ch=out_ch, encode_layer=encode_layer)
+        net = UnetGenerator_2(input_nc, output_nc, 6, ngf, norm_layer=norm_layer, use_dropout=use_dropout, same_kernel_size=False, out_ch=out_ch, encode_layer=encode_layer).to(device)
     elif netG == 'unet_128':
-        net = UnetGenerator_2(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, same_kernel_size=same_kernel_size, out_ch=out_ch, encode_layer=encode_layer)
+        net = UnetGenerator_2(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, same_kernel_size=same_kernel_size, out_ch=out_ch, encode_layer=encode_layer).to(device)
     elif netG == 'unet_256':
-        net = UnetGenerator_2(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout, out_ch=out_ch, same_kernel_size=same_kernel_size, encode_layer=encode_layer)
+        net = UnetGenerator_2(input_nc, output_nc, 8, ngf, norm_layer=norm_layer, use_dropout=use_dropout, out_ch=out_ch, same_kernel_size=same_kernel_size, encode_layer=encode_layer).to(device)
     elif netG == 'stylegan2':
-        net = StyleGAN2Generator(input_nc, output_nc, ngf, use_dropout=use_dropout, opt=opt)
+        net = StyleGAN2Generator(input_nc, output_nc, ngf, use_dropout=use_dropout, opt=opt).to(device)
     elif netG == 'smallstylegan2':
-        net = StyleGAN2Generator(input_nc, output_nc, ngf, use_dropout=use_dropout, n_blocks=2, opt=opt)
+        net = StyleGAN2Generator(input_nc, output_nc, ngf, use_dropout=use_dropout, n_blocks=2, opt=opt).to(device)
     elif netG == 'resnet_cat':
         n_blocks = 8
-        net = G_Resnet(input_nc, output_nc, opt.nz, num_downs=2, n_res=n_blocks - 4, ngf=ngf, norm='inst', nl_layer='relu')
+        net = G_Resnet(input_nc, output_nc, opt.nz, num_downs=2, n_res=n_blocks - 4, ngf=ngf, norm='inst', nl_layer='relu').to(device)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids, initialize_weights=('stylegan2' not in netG))
 
-def define_F(input_nc, netF, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], no_antialias=False, opt=None):
+def define_F(input_nc, netF, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02, gpu_ids=[], no_antialias=False, opt=None,device="cpu"):
     if netF == 'global_pool':
-        net = PoolingF()
+        net = PoolingF().to(device)
     elif netF == 'reshape':
-        net = ReshapeF()
+        net = ReshapeF().to(device)
     elif netF == 'sample':
-        net = PatchSampleF(use_mlp=False, init_type=init_type, init_gain=init_gain, gpu_ids=gpu_ids, nc=opt.netF_nc)
+        net = PatchSampleF(use_mlp=False, init_type=init_type, init_gain=init_gain, nc=opt.netF_nc).to(device)
     elif netF == 'mlp_sample':
-        net = PatchSampleF(use_mlp=True, init_type=init_type, init_gain=init_gain, gpu_ids=gpu_ids, nc=opt.netF_nc)
+        net = PatchSampleF(use_mlp=True, init_type=init_type, init_gain=init_gain, nc=opt.netF_nc).to(device)
     elif netF == 'strided_conv':
-        net = StridedConvF(init_type=init_type, init_gain=init_gain, gpu_ids=gpu_ids)
+        net = StridedConvF(init_type=init_type, init_gain=init_gain).to(device)
     else:
         raise NotImplementedError('projection model name [%s] is not recognized' % netF)
     return init_net(net, init_type, init_gain, gpu_ids)
 
 
-def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, gpu_ids=[], no_antialias=False, opt=None):
+def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=0.02, gpu_ids=[], no_antialias=False, opt=None,device="cpu"):
     """Create a discriminator
 
     Parameters:
@@ -753,13 +753,13 @@ def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal'
     norm_layer = get_norm_layer(norm_type=norm)
 
     if netD == 'basic':  # default PatchGAN classifier
-        net = NLayerDiscriminator(input_nc, ndf, n_layers=3, norm_layer=norm_layer, no_antialias=no_antialias)
+        net = NLayerDiscriminator(input_nc, ndf, n_layers=3, norm_layer=norm_layer, no_antialias=no_antialias).to(device)
     elif netD == 'n_layers':  # more options
-        net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, no_antialias=no_antialias)
+        net = NLayerDiscriminator(input_nc, ndf, n_layers_D, norm_layer=norm_layer, no_antialias=no_antialias).to(device)
     elif netD == 'pixel':     # classify if each pixel is real or fake
-        net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer)
+        net = PixelDiscriminator(input_nc, ndf, norm_layer=norm_layer).to(device)
     elif 'stylegan2' in netD:
-        net = StyleGAN2Discriminator(input_nc, ndf, n_layers_D, no_antialias=no_antialias, opt=opt)
+        net = StyleGAN2Discriminator(input_nc, ndf, n_layers_D, no_antialias=no_antialias, opt=opt).to(device)
     else:
         raise NotImplementedError('Discriminator model name [%s] is not recognized' % netD)
     return init_net(net, init_type, init_gain, gpu_ids, initialize_weights=('stylegan2' not in netD))
@@ -842,7 +842,7 @@ class GANLoss(nn.Module):
         return loss
 
 
-def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', constant=1.0, lambda_gp=10.0):
+def cal_gradient_penalty(netD, real_data, fake_data, device="cpu", type='mixed', constant=1.0, lambda_gp=10.0):
     """Calculate the gradient penalty loss, used in WGAN-GP paper https://arxiv.org/abs/1704.00028
 
     Arguments:

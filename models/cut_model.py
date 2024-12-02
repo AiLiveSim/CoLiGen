@@ -1,18 +1,9 @@
 import numpy as np
 import torch
-import os
-from collections import OrderedDict
-from torch.autograd import Variable
-import itertools
-import util.util as util
-from util.image_pool import ImagePool
 from .base_model import BaseModel
 from .patchnce import PatchNCELoss
 from util import *
 from . import networks
-import random
-import math
-import sys
 from itertools import chain
 from rangenet.tasks.semantic.modules.segmentator import *
 
@@ -20,14 +11,14 @@ class CUTModel(BaseModel):
     def __init__(self, opt, lidar_A, lidar_B):
         BaseModel.__init__(self, opt)
         opt_m = opt.model
-        opt_t = opt.training
+        if self.isTrain :
+            opt_t = opt.training
         self.lidar_A = lidar_A
         self.lidar_B = lidar_B
         if self.isTrain:
             self.model_names = ['G', 'D']
         else:
             self.model_names = ['G']
-        
         self.loss_names = ['G_GAN', 'D_real', 'D_fake', 'G']
         self.nce_layers = [int(i) for i in opt_m.nce_layers.split(',')]
         if self.opt.model.nce_idt and self.opt.model.lambda_NCE and self.isTrain:
@@ -99,22 +90,28 @@ class CUTModel(BaseModel):
                 self.optimizers.append(self.optimizer_F_feat)
 
     def set_input(self, input):
-        data_A = fetch_reals(input['A'], self.lidar_A, self.device, self.opt.model.norm_label)
-        data_B = fetch_reals(input['B'], self.lidar_B, self.device, self.opt.model.norm_label)
+        # Separate A and B process
+        if self.isTrain : 
+            data_A = fetch_reals(input['A'], self.lidar_A, self.device, self.opt.model.norm_label)
+        else :
+            data_A = fetch_reals(input, self.lidar_A, self.device, self.opt.model.norm_label)
         for k, v in data_A.items():
             setattr(self, 'real_' + k, v)
-        for k, v in data_B.items():
-            setattr(self, 'real_B_' + k, v)
+
         self.real_A = cat_modality(data_A, self.opt.model.modality_A)
-        self.real_B = cat_modality(data_B, self.opt.model.modality_B)
         self.cond_A = cat_modality(data_A, self.opt.model.modality_cond) if self.netC is not None else None 
-        self.cond_B = cat_modality(data_B, self.opt.model.modality_cond) if self.netC is not None else None 
-        self.real_B_mod_A = cat_modality(data_B, self.opt.model.modality_A)
-        self.real_A_mod_B = cat_modality(data_A, self.opt.model.modality_B)
         self.data_A = data_A
-        self.data_B = data_B
 
-
+        if self.lidar_B is not None :
+            data_B = fetch_reals(input['B'], self.lidar_B, self.device, self.opt.model.norm_label)
+            for k, v in data_B.items():
+                setattr(self, 'real_B_' + k, v)
+            self.real_B = cat_modality(data_B, self.opt.model.modality_B)
+            self.cond_B = cat_modality(data_B, self.opt.model.modality_cond) if self.netC is not None else None 
+            self.real_B_mod_A = cat_modality(data_B, self.opt.model.modality_A)
+            self.real_A_mod_B = cat_modality(data_A, self.opt.model.modality_B)
+            self.data_B = data_B
+        
     def forward(self):
         self.real = torch.cat((self.real_A, self.real_B_mod_A), dim=0) if self.opt.model.nce_idt and self.isTrain else self.real_A
         if self.cond_A is not None:
@@ -151,6 +148,8 @@ class CUTModel(BaseModel):
         self.loss_D.backward()
 
     def backward_G(self):
+        if self.lidar_B is None : 
+            raise Exception("Can't backward with only one LiDAR dataset. Please read the paper...")
         # adversariasl loss
         fake_B = self.fake_B
 
@@ -182,8 +181,6 @@ class CUTModel(BaseModel):
 
         loss_NCE_both = (loss_NCE_both_pix + loss_NCE_both_feat)
         self.loss_G = self.loss_G_GAN + loss_NCE_both
-
-
         self.loss_G.backward()
 
 
@@ -221,7 +218,7 @@ class CUTModel(BaseModel):
             src[:, 0:diff_ch] = extra_ch  
             # extra_ch = src[:, 0:diff_ch].clone()
             tgt = torch.cat([extra_ch, tgt], dim=1)
-      
+
         feat_q = self.netG(tgt, self.nce_layers, encode_only=True)
 
         if self.opt.model.flip_equivariance and self.flipped_for_equivariance:

@@ -6,6 +6,10 @@ checkpoints_sp
 *.so
 *.a
 **build
+*.png
+Semantic-CARLA
+*.pth
+coligen
 .vscode
 .catkin_tools/
 devel/

@@ -54,7 +54,10 @@ class  KITTIOdometry(torch.utils.data.Dataset):
         self.fill_in_label = fill_in_label
         self.name = name
         self.has_rgb = 'rgb' in modality
-        self.has_label = 'label' in modality
+        if split != "test" :
+            self.has_label = 'label' in modality
+        else :
+            self.has_label=False
         self.limited_view = limited_view
         self.finesize = finesize
         self.norm_label = norm_label
@@ -139,6 +142,7 @@ class  KITTIOdometry(torch.utils.data.Dataset):
 
     def load_datalist(self):
         datalist = []
+        print("Subsets ",self.subsets)
         for subset in self.subsets:
             subset_dir = osp.join(self.root, str(subset).zfill(2))
             sub_point_paths = sorted(glob(osp.join(subset_dir, "velodyne/*")))
@@ -149,6 +153,7 @@ class  KITTIOdometry(torch.utils.data.Dataset):
         if self.has_rgb:
             self.rgb_list = [d.replace('velodyne', 'image_2').replace('bin' if self.is_raw else 'npy', 'png') for d in self.datalist]
         self.tag_list = [d.replace('velodyne', 'tag').replace('bin', 'tag') for d in self.datalist] if self.name == 'semanticPOSS' and self.is_raw else None
+        print("taille data",len(self.datalist))
 
     def preprocess(self, out):
         out["depth"] = np.linalg.norm(out["points"], ord=2, axis=2)

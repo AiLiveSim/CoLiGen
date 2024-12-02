@@ -84,12 +84,14 @@ gather_operation = GatherOperation.apply
 def downsample_point_clouds(xyz, k):
     assert xyz.ndim == 3, "expected 3-dim, but got {}-dim tensor".format(xyz.ndim)
     assert xyz.size(2) == 3, "expected (B,N,3), but got {}".format(xyz.shape)
+    xyz=xyz.to("cuda")
     assert xyz.is_cuda
     xyz = xyz.contiguous()
     source = xyz.transpose(1, 2).contiguous()  # (B,3,N)
     inds = furthest_point_sampling(xyz, k)
     xyz_sub = gather_operation(source, inds)  # (B,3,k)
     xyz_sub = xyz_sub.transpose(1, 2)  # (B,k,3)
+    xyz_sub=xyz_sub.to("cuda")
     return xyz_sub
 
 

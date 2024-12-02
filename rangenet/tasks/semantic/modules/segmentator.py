@@ -31,7 +31,7 @@ class Segmentator(nn.Module):
     self.sensor_img_stds = torch.tensor(self.DATA["sensor"]["img_stds"], dtype=torch.float)
     self.nclasses = len(self.DATA["learning_map_inv"])
     self.strict = False
-    self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    self.device = "cpu"
     if self.ARCH["post"]["KNN"]["use"]:
       self.post = KNN(self.ARCH["post"]["KNN"]["params"], self.nclasses)
     # get the model

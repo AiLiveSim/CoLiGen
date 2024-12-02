@@ -33,10 +33,14 @@ class BaseModel(ABC):
             -- self.optimizers (optimizer list):    define and initialize optimizers. You can define one optimizer for each network. If two networks are updated at the same time, you can use itertools.chain to group them. See cycle_gan_model.py for an example.
         """
         self.opt = opt
-        self.gpu_ids = opt.training.gpu_ids
-        self.isTrain = opt.training.isTrain
-        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids else torch.device('cpu')  # get device name: CPU or GPU
-        self.save_dir = os.path.join(opt.training.checkpoints_dir, opt.training.name)  # save all the checkpoints to save_dir
+        self.isTrain = opt.isTrain
+        self.gpu_ids = opt.gpu_ids
+        if self.isTrain :
+            self.save_dir = os.path.join(opt.training.checkpoints_dir, opt.training.name)
+        else :
+            self.save_dir = "coligen/"
+        self.device = "cpu" # get device name: CPU or GPU
+          # save all the checkpoints to save_dir
         # if opt.preprocess != 'scale_width':  # with [scale_width], input images might have different sizes, which hurts the performance of cudnn.benchmark.
         #     torch.backends.cudnn.benchmark = True
         self.eval_metrics = ['cd', 'depth_errors', 'depth_accuracies']
@@ -46,6 +50,7 @@ class BaseModel(ABC):
         self.visual_names = []
         ds_A_modality = opt.dataset.dataset_A.modality
         self.visual_names.extend(['real_' + m for m in ds_A_modality])
+        print(opt.dataset)
         if hasattr(opt.dataset, 'dataset_B'):
             ds_B_modality = opt.dataset.dataset_B.modality
             self.visual_names.extend(['real_B_' + m for m in ds_B_modality])
@@ -206,10 +211,9 @@ class BaseModel(ABC):
         for name in self.model_names:
             if isinstance(name, str):
                 net = getattr(self, 'net' + name)
-                if len(self.gpu_ids) > 0 and torch.cuda.is_available():
-                    save_dict[name] = net.module.state_dict()
-                else:
-                    save_dict[name] = net.state_dict()
+                """if len(self.gpu_ids) > 0 :
+                    save_dict[name] = net.module.state_dict()""" 
+                save_dict[name] = net.state_dict()
         for i, o in enumerate(self.optimizers):
             save_dict[f'optimizer_{i}'] = o.state_dict()
         for i, s in enumerate(self.schedulers):
